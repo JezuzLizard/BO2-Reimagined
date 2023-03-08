@@ -16,7 +16,7 @@ main()
 	{
 		return;
 	}
-
+	level._effect["meat_marker"] = loadfx( "maps/zombie/fx_zmb_meat_marker" );
 	replaceFunc(maps\mp\zombies\_zm::getfreespawnpoint, scripts\zm\replaced\_zm::getfreespawnpoint);
 	replaceFunc(maps\mp\gametypes_zm\_zm_gametype::onspawnplayer, scripts\zm\replaced\_zm_gametype::onspawnplayer);
 	replaceFunc(maps\mp\gametypes_zm\_zm_gametype::onplayerspawned, scripts\zm\replaced\_zm_gametype::onplayerspawned);
@@ -2491,6 +2491,20 @@ containment_think()
 
 	wait 10;
 
+	if ( true )
+	{
+		polygon = create_polygon( ( -10945, -2912, 192 ), 12, 256 );
+		spawn_fx_on_polygon( polygon );
+		while ( true )
+		{
+			if ( check_point_is_in_polygon( polygon, level.players[ 0 ].origin ) )
+			{
+				level.players[ 0 ] iPrintLn( "You are inside the containment zone!" );
+			}
+			wait 0.5;
+		}
+		return;
+	}
 	containment_zones = containment_get_zones();
 	i = 0;
 
@@ -3445,5 +3459,208 @@ spawn_bots()
 		}
 
 		level.bots[i].pers["isBot"] = 1;
+	}
+}
+
+add_point_to_meat_team_bounds( team, point )
+{
+	if ( !isDefined( level.meat_team_bounds ) )
+	{
+		level.meat_team_bounds = [];
+	}
+	if ( !isDefined( level.meat_team_bounds[ team ] ) )
+	{
+		level.meat_team_bounds[ team ] = [];
+	}
+	level.meat_team_bounds[ team ][ level.meat_team_bounds[ team ].size ] = point;
+}
+
+on_line( line, point )
+{
+	// Check whether p is on the line or not
+	if ( point[ 0 ] <= max( line[ 0 ][ 0 ], line[ 1 ][ 0 ] )
+		&& point[ 0 ] <= min( line[ 0 ][ 0 ], line[ 1 ][ 0 ] )
+		&& ( point[ 1 ] <= max( line[ 0 ][ 1 ], line[ 1 ][ 1 ] )
+		&& point[ 1 ] <= min( line[ 0 ][ 1 ], line[ 1 ][ 1 ] ) ) )
+	{
+		return true;
+	}
+	return false;
+}
+
+direction( point_a, point_b, point_c )
+{
+	val1 = point_b[ 1 ] - point_a[ 1 ];
+	val2 = point_c[ 0 ] - point_b[ 0 ];
+	val3 = point_b[ 0 ] - point_a[ 0 ];
+	val4 = point_c[ 1 ] - point_b[ 1 ];
+	val = ( val1 * val2 ) - ( val3 * val4 );
+
+	if ( val == 0 )
+	{
+		// Colinear
+		return 0;
+	}
+	else if ( val < 0 )
+	{
+		// Anti-clockwise direction
+		return 2;
+	}
+	// Clockwise direction
+	return 1;
+}
+
+isIntersect( line1, line2 )
+{
+	// Four direction for two lines and points of other line
+	dir1 = direction( line1[ 0 ], line1[ 1 ], line2[ 0 ] );
+	dir2 = direction( line1[ 0 ], line1[ 1 ], line2[ 1 ] );
+	dir3 = direction( line2[ 0 ], line2[ 1 ], line1[ 0 ] );
+	dir4 = direction( line2[ 0 ], line2[ 1 ], line1[ 1 ] );
+
+	// When intersecting
+	if ( dir1 != dir2 && dir3 != dir4 )
+	{
+		return true;
+	}
+	// When p2 of line2 are on the line1
+	if ( dir1 == 0 && on_line( line1, line2[ 0 ] ) )
+	{
+		return true;
+	}
+	// When p1 of line2 are on the line1
+	if ( dir2 == 0 && on_line( line1, line2[ 1 ] ) )
+	{
+		return true;
+	}
+	// When p2 of line1 are on the line2
+	if ( dir3 == 0 && on_line( line2, line1[ 0 ] ) )
+	{
+		return true;
+	}
+	// When p1 of line1 are on the line2
+	if ( dir4 == 0 && on_line( line2, line1[ 1 ] ) )
+	{
+		return true;
+	}
+	return false;
+}
+
+checkInside( polygon, sides, point )
+{
+
+	// When polygon has less than 3 edge, it is not polygon
+	if ( sides < 3 )
+		return false;
+
+	// Create a point at infinity, y is same as point p
+	exline = [];
+	exline[ 0 ] = point;
+	exline[ 1 ] = ( 99999, point[ 1 ], 0 );
+	count = 0;
+	i = 0;
+	do {
+
+		// Forming a line from two consecutive points of
+		// poly
+		side = [];
+		side[ 0 ] = polygon[ i ];
+		side[ 1 ] = polygon[ ( i + 1 ) % sides ];
+		if ( isIntersect( side, exline ) ) 
+		{
+
+			// If side is intersects exline
+			if ( direction( side[ 0 ], point, side[ 1 ] ) == 0)
+				return on_line( side, point );
+			count++;
+		}
+		i = ( i + 1 ) % sides;
+	} while ( i != 0 );
+
+	// When count is odd
+	return count & 1;
+}
+
+// Driver code
+check_point_is_in_polygon( polygon, point )
+{
+	// Function call
+	if ( checkInside( polygon, polygon.size, point ) )
+	{
+		print( "Point is inside." );
+		return true;
+	}
+	else
+	{
+		//print( "Point is outside." );
+		return false;
+	}
+}
+
+get_next_point( vector, angles, num )
+{
+	angles_to_forward = anglestoforward( angles );
+	x = vector[ 0 ] + num * angles_to_forward[ 0 ];
+	y = vector[ 1 ] + num * angles_to_forward[ 1 ];
+	final_vector = ( x, y, vector[ 2 ] );
+	//logprint( "final_vector: " + final_vector + " vector: " + vector + " angles: " + angles + " angles_to_forward: " + angles_to_forward + " num: " + num + "\n" );
+	return final_vector;
+}
+
+create_polygon( start_vector, num_sides, radius )
+{
+	if ( num_sides < 3 )
+	{
+		return;
+	}
+	const pi = 3.14;
+	polygon = [];
+	next_angle = ( 2 * pi ) / num_sides;
+	radians = sin(pi / num_sides ) * (180 / pi);
+	length_of_side = 2 * radius * radians;
+	angle_of_side = 360 / num_sides;
+	polygon[ 0 ] = get_next_point( start_vector, ( 0, -90, 0 ), radius );
+	//polygon[ 0 ] = start_vector;
+	//polygon[ 0 ] = ( start_vector[ 0 ] + radius, start_vector[ 1 ], start_vector[ 2 ] );
+	for ( i = 1; i < num_sides; i++ )
+	{
+		// cosine = cos(i * next_angle);
+		// print( cosine );
+		// sine = sin(i * next_angle);
+		// print( sine );
+		// x = start_vector[ 0 ] + radius * cosine;
+		// y = start_vector[ 1 ] + radius * sine;
+		//polygon[ i ] = ( x, y, start_vector[ 2 ] );
+		print( "angle_of_side: " + angle_of_side * i );
+		print( "length_of_side: " + length_of_side );
+		polygon[ i ] = get_next_point( polygon[ i - 1 ], ( 0, angle_of_side * i, 0 ), length_of_side );
+		print( polygon[ i ] );
+	}
+	return polygon;
+}
+
+spawn_fx_on_polygon( polygon, fx )
+{
+	if ( !isDefined( fx ) )
+	{
+		if ( level.script == "zm_transit" )
+			fx = level._effect["fx_zmb_lava_crevice_glow_50"];
+		else if ( level.script == "zm_nuked" )
+			fx = level._effect["fx_fire_ceiling_edge_md"];
+		else if ( level.script == "zm_highrise" )
+			fx = level._effect["character_fire_death_sm"];
+		else
+			fx = level._effect["character_fire_death_sm"];
+	}
+	if ( !isDefined( level.polygon_fx_ents ) )
+	{
+		level.polygon_fx_ents = [];
+	}
+	for ( i = 0; i < polygon.size; i++ )
+	{
+		temp_ent = spawn( "script_model", polygon[ i ] );
+		temp_ent setmodel( "tag_origin" );
+		playfxontag( level._effect["meat_marker"], temp_ent, "tag_origin" );
+		level.polygon_fx_ents[ level.polygon_fx_ents.size ] = temp_ent;
 	}
 }
