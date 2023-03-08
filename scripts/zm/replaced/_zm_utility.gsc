@@ -102,3 +102,140 @@ create_zombie_point_of_interest_attractor_positions( num_attract_dists, diff_per
 		level notify( "attractor_positions_generated" );
 	}
 }
+
+spawn_zombie_override( spawner, target_name, spawn_point, round_number )
+{
+	if ( !isdefined( spawner ) )
+	{
+/#
+		println( "ZM >> spawn_zombie - NO SPAWNER DEFINED" );
+#/
+		return undefined;
+	}
+
+	while ( getfreeactorcount() < 1 )
+		wait 0.05;
+
+	spawner.script_moveoverride = 1;
+
+	if ( isdefined( spawner.script_forcespawn ) && spawner.script_forcespawn )
+	{
+		guy = spawner spawnactor();
+
+		guy.zombie_can_sidestep = true;
+		guy.zombie_can_forwardstep = true;
+		guy.shouldsidestepfunc = ::zombie_should_sidestep;
+		guy thread speed_up_zombie();
+		if ( isdefined( level.giveextrazombies ) )
+			guy [[ level.giveextrazombies ]]();
+
+		guy enableaimassist();
+
+		if ( isdefined( round_number ) )
+			guy._starting_round_number = round_number;
+
+		guy.aiteam = level.zombie_team;
+		guy clearentityowner();
+		level.zombiemeleeplayercounter = 0;
+		guy thread run_spawn_functions();
+		guy forceteleport( spawner.origin );
+		guy show();
+	}
+
+	spawner.count = 666;
+
+	if ( !spawn_failed( guy ) )
+	{
+		if ( isdefined( target_name ) )
+			guy.targetname = target_name;
+
+		return guy;
+	}
+
+	return undefined;
+}
+
+zombie_should_sidestep()
+{
+	if ( maps\mp\animscripts\zm_move::cansidestep() && isplayer( self.enemy ) && self.enemy islookingat( self ) )
+	{
+		if ( self.zombie_move_speed != "sprint" || randomfloat( 1 ) < 0.7 )
+			return "step";
+		else
+			return "roll";
+	}
+
+	return "none";	
+}
+
+speed_up_zombie()
+{
+	if ( level.scr_zm_ui_gametype_obj != "zmeat" )
+	{
+		return;
+	}
+	if ( !isDefined( level.meat_player_tracker_for_zombie_movespeed ) )
+	{
+		level.meat_player_tracker_for_zombie_movespeed = ::track_meat_player;
+		level thread [[ level.meat_player_tracker_for_zombie_movespeed ]]();
+	}
+	self endon( "death" );
+	self waittill( "completed_emerging_into_playable_area" );
+	while ( true )
+	{
+		wait 0.1;
+		if ( !is_true( self.has_legs ) )
+		{
+			return;
+		}
+		
+		if ( !isDefined( level.meat_player ) )
+		{
+			if ( self.zombie_move_speed != "sprint" )
+			{
+				self set_zombie_run_cycle( "sprint" );
+			}
+			continue;
+		}
+
+		if ( distanceSquared( level.meat_player.origin, self.origin ) < 87381 && distanceSquared( level.meat_player.origin, self.origin ) > 21845 )
+		{
+			if ( self.zombie_move_speed != "super_sprint" )
+			{
+				self set_zombie_run_cycle( "super_sprint" );
+			}
+		}
+		else if ( distanceSquared( level.meat_player.origin, self.origin ) > 87381 )
+		{
+			if ( self.zombie_move_speed != "chase_bus" )
+			{
+				self set_zombie_run_cycle( "chase_bus" );
+			}
+		}
+		else 
+		{
+			if ( self.zombie_move_speed != "sprint" )
+			{
+				self set_zombie_run_cycle( "sprint" );
+			}
+		}
+	}
+}
+
+track_meat_player()
+{
+	level endon( "end_game" );
+	while ( true )
+	{
+		level.meat_player = undefined;
+		foreach (player in level.players)
+		{
+			if (player hasWeapon("item_meat_zm"))
+			{
+				level.meat_player = player;
+				break;
+			}
+		}
+		wait 0.5;
+	}
+}
