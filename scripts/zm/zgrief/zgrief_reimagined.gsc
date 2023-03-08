@@ -2493,15 +2493,26 @@ containment_think()
 
 	if ( true )
 	{
-		polygon = create_polygon( ( -10945, -2912, 192 ), 12, 256 );
-		spawn_fx_on_polygon( polygon );
+		polygon = create_polygon( ( -10945, -2912, 192 + 5 ), 24, 256 );
+		effect_keys = getArrayKeys( level._effect );
+		i = 0;
 		while ( true )
 		{
+			spawn_fx_on_polygon( polygon, level._effect["powerup_on_solo"] );
+			print( "cur effect: " + effect_keys[ i ] );
 			if ( check_point_is_in_polygon( polygon, level.players[ 0 ].origin ) )
 			{
 				level.players[ 0 ] iPrintLn( "You are inside the containment zone!" );
 			}
-			wait 0.5;
+			wait 8;
+			if ( isDefined( level.polygon_fx_ents ) && level.polygon_fx_ents.size > 0 )
+			{
+				for ( j = 0; j < level.polygon_fx_ents.size; j++ )
+				{
+					level.polygon_fx_ents[ j ] delete();
+				}
+			}
+			i++;
 		}
 		return;
 	}
@@ -3615,26 +3626,13 @@ create_polygon( start_vector, num_sides, radius )
 	}
 	const pi = 3.14;
 	polygon = [];
-	next_angle = ( 2 * pi ) / num_sides;
 	radians = sin(pi / num_sides ) * (180 / pi);
 	length_of_side = 2 * radius * radians;
 	angle_of_side = 360 / num_sides;
 	polygon[ 0 ] = get_next_point( start_vector, ( 0, -90, 0 ), radius );
-	//polygon[ 0 ] = start_vector;
-	//polygon[ 0 ] = ( start_vector[ 0 ] + radius, start_vector[ 1 ], start_vector[ 2 ] );
 	for ( i = 1; i < num_sides; i++ )
 	{
-		// cosine = cos(i * next_angle);
-		// print( cosine );
-		// sine = sin(i * next_angle);
-		// print( sine );
-		// x = start_vector[ 0 ] + radius * cosine;
-		// y = start_vector[ 1 ] + radius * sine;
-		//polygon[ i ] = ( x, y, start_vector[ 2 ] );
-		print( "angle_of_side: " + angle_of_side * i );
-		print( "length_of_side: " + length_of_side );
 		polygon[ i ] = get_next_point( polygon[ i - 1 ], ( 0, angle_of_side * i, 0 ), length_of_side );
-		print( polygon[ i ] );
 	}
 	return polygon;
 }
@@ -3660,7 +3658,7 @@ spawn_fx_on_polygon( polygon, fx )
 	{
 		temp_ent = spawn( "script_model", polygon[ i ] );
 		temp_ent setmodel( "tag_origin" );
-		playfxontag( level._effect["meat_marker"], temp_ent, "tag_origin" );
+		playfxontag( fx, temp_ent, "tag_origin" );
 		level.polygon_fx_ents[ level.polygon_fx_ents.size ] = temp_ent;
 	}
 }
