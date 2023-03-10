@@ -39,6 +39,32 @@ main()
 	replaceFunc(maps\mp\gametypes_zm\zmeat::last_stand_meat_nudge, scripts\zm\replaced\zmeat::last_stand_meat_nudge);
 
 	include_weapons_grief();
+
+	game_mode_objects = getEntArray( "game_mode_object", "targetname" );
+	foreach ( game_obj in game_mode_objects )
+	{
+		if ( !isDefined( game_obj.script_string ) )
+		{
+			continue;
+		} 
+		keys = strTok( game_obj.script_string, " " );
+		foreach ( key in keys )
+		{
+			if ( key == "znml" )
+			{
+				game_obj.script_string = "zstandard";
+				break;
+			}
+		}
+	}
+	perk_machines = getEntArray( "zm_perk_machine", "targetname" );
+	foreach ( perk in perk_machines )
+	{
+		if ( isDefined( perk.script_string ) && perk.script_string == "znml_perks_cornfield" )
+		{
+			perk.script_string = "zstandard_perks_cornfield";
+		}
+	}
 }
 
 init()

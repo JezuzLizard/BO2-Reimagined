@@ -313,7 +313,7 @@ set_dvars()
 	setDvar( "sv_voice", 2 );
 	setDvar( "sv_voiceQuality", 9 );
 
-	setDvar( "sv_cheats", 0 );
+	//setDvar( "sv_cheats", 0 );
 }
 
 set_client_dvars()
@@ -364,6 +364,8 @@ health_bar_hud()
 	self endon("disconnect");
 
 	flag_wait( "initial_blackscreen_passed" );
+
+	level.player_out_of_playable_area_monitor = false;
 
 	x = 5;
 	y = -104;
